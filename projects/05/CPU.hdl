@@ -40,4 +40,38 @@ CHIP CPU {
 
     PARTS:
     // Put your code here:
+    // Decode Instruction
+    Or16(a=false, b=instruction, out[15]=op, out[15]=Asel, out[12]=a, out[12]=ALUsel,
+        out[11]=c1, out[10]=c2, out[9]=c3, out[8]=c4, out[7]=c5, out[6]=c6,
+        out[5]=d1, out[4]=d2, out[3]=d3, out[2]=j1, out[1]=j2, out[0]=j3);
+    
+    // Data Path
+    Mux16(a=instruction, b=Mval, sel=Asel, out=inA);
+    // Register A
+    ARegister(in=inA, load=loadA, out=outA, out[0..14]=addressM);
+    Mux16(a=outA, b=inM, sel=ALUsel, out=AorM);
+    // Register D
+    DRegister(in=Mval, load=loadD, out=outD);
+    // ALU Execution
+    ALU(x=outD, y=AorM, zx=c1, nx=c2, zy=c3, ny=c4, 
+        f=c5, no=c6, out=outM, out=Mval, zr=zr, ng=ng);
+    // PC
+    PC(in=outA, load=PCsel, inc=true, reset=reset, out[0..14]=pc);
+
+    // Control Logic
+    // IN instruction[16], zr, ng
+    // OUT Asel, loadA, loadD, ALUsel, ALUop, PCsel, writeM
+    Not(in=op, out=notOp);
+    Or(a=d1, b=notOp, out=loadA);
+    And(a=op, b=d2, out=loadD);
+    Not(in=ng, out=notNg);
+    Not(in=zr, out=NotZr);
+    And(a=j3, b=notNg, out=andj3);
+    And(a=andj3, b=NotZr, out=jgt);
+    And(a=j2, b=zr, out=jeq);
+    And(a=j1, b=ng, out=jlt);
+    Or(a=jgt, b=jeq, out=jge);
+    Or(a=jge, b=jlt, out=jmp);
+    And(a=op, b=jmp, out=PCsel);
+    And(a=op, b=d3, out=writeM);
 }
